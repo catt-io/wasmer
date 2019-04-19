@@ -26,12 +26,6 @@ where
             _phantom: PhantomData,
         }
     }
-    pub fn as_ptr(&self) -> *const T {
-        self.ptr
-    }
-    pub fn as_mut_ptr(&mut self) -> *mut T {
-        self.ptr
-    }
 }
 
 impl<'a, T: IntCast> MemoryView<'a, T, NonAtomically> {

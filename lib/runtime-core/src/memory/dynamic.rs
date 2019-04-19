@@ -65,6 +65,40 @@ impl DynamicMemory {
     pub fn size(&self) -> Pages {
         self.current
     }
+    
+    pub fn set(&mut self, data: &[u8], local: &mut vm::LocalMemory) -> Result<Pages, GrowError> {
+        let new_pages = Pages((data.len()/crate::units::WASM_PAGE_SIZE) as u32);
+
+        if let Some(max) = self.max {
+            if new_pages > max {
+                return Err(GrowError::ExceededMaxPagesForMemory(
+                    new_pages.0 as usize,
+                    max.0 as usize,
+                ));
+            }
+        }
+
+        let mut new_memory = sys::Memory::with_size(new_pages.bytes().0 + DYNAMIC_GUARD_SIZE)
+            .map_err(|e| e.into())?;
+
+        unsafe {
+            new_memory
+                .protect(0..new_pages.bytes().0, sys::Protect::ReadWrite)
+                .map_err(|e| e.into())?;
+
+            new_memory.as_slice_mut()[..data.len()]
+                .copy_from_slice(data);
+        }
+
+        self.memory = new_memory; //The old memory gets dropped.
+
+        local.base = self.memory.as_ptr();
+        local.bound = new_pages.bytes().0;
+
+        let old_pages = self.current;
+        self.current = new_pages;
+        Ok(old_pages)
+    }
 
     pub fn grow(&mut self, delta: Pages, local: &mut vm::LocalMemory) -> Result<Pages, GrowError> {
         if delta == Pages(0) {

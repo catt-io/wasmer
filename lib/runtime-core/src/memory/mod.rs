@@ -89,6 +89,23 @@ impl Memory {
         self.desc
     }
 
+    pub fn get(&self, buffer: &mut Vec<u8>) {
+        let vm::LocalMemory { base, .. } = unsafe { *self.vm_local_memory() };
+        let length = self.size().bytes().0;
+        buffer.resize(length, 0);
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(base, buffer.as_mut_ptr(), length);
+        }
+    }
+
+    pub fn set(&self, data: &[u8]) -> Result<Pages, GrowError> {
+        match &self.variant {
+            MemoryVariant::Unshared(unshared_mem) => unshared_mem.set(data),
+            MemoryVariant::Shared(shared_mem) => unimplemented!(),
+        }
+    }
+
     /// Grow this memory by the specified number of pages.
     pub fn grow(&self, delta: Pages) -> Result<Pages, GrowError> {
         match &self.variant {
@@ -242,6 +259,21 @@ impl UnsharedMemory {
                 local: Cell::new(local),
             }),
         })
+    }
+
+    pub fn set(&self, data: &[u8]) -> Result<Pages, GrowError> {
+        let mut storage = self.internal.storage.borrow_mut();
+
+        let mut local = self.internal.local.get();
+
+        let pages = match &mut *storage {
+            UnsharedMemoryStorage::Dynamic(dynamic_memory) => dynamic_memory.set(data, &mut local),
+            UnsharedMemoryStorage::Static(static_memory) => unimplemented!(),
+        };
+
+        self.internal.local.set(local);
+
+        pages
     }
 
     pub fn grow(&self, delta: Pages) -> Result<Pages, GrowError> {
