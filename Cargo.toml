@@ -1,9 +1,9 @@
 [package]
-name = "romy-wasmer-fork"
+name = "wasmer"
 version = "0.3.0"
 authors = ["The Wasmer Engineering Team <engineering@wasmer.io>"]
 edition = "2018"
-repository = "https://github.com/catt-io/wasmer"
+repository = "https://github.com/wasmerio/wasmer"
 publish = true
 description = "High-Performance WebAssembly JIT interpreter"
 license = "MIT"
